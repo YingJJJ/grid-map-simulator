@@ -76,6 +76,40 @@
             cursor: pointer;
         }
         
+        /* 新增的连线模式开关样式 */
+        .mode-switch {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 5px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .mode-switch label {
+            margin-right: 10px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .mode-switch input {
+            margin-right: 5px;
+        }
+        
+        /* 连线样式 - 鼠标悬停时高亮 */
+        .line-hover {
+            stroke: #e74c3c !important;
+            stroke-width: 3px !important;
+            cursor: pointer;
+        }
+        
+        /* 手动模式下的起点样式 - 紫色 */
+        .dot.manual-start {
+            background-color: #9b59b6; /* 紫色 */
+            box-shadow: 0 0 8px #9b59b6; /* 添加与红色点相同的阴影效果 */
+        }
+        
         /* 原有的样式保持不变 */
         .container {
             display: flex;
@@ -319,6 +353,63 @@
             </div>
         </div>
     </div>
+    
+    <!-- 添加更新记录模态框 -->
+    <div class="modal fade" id="updateLogModal" tabindex="-1" aria-labelledby="updateLogModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="updateLogModalLabel">功能更新记录</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="update-log">
+                        <h4>2025年3月16日更新</h4>
+                        <h5>新增功能：</h5>
+                        <ol>
+                            <li><strong>手动/自动连接模式切换</strong>：
+                                <ul>
+                                    <li>添加了模式切换开关，可以选择手动或自动连接模式</li>
+                                    <li>手动模式：可以手动选择起点（紫色标记），然后连接其他点</li>
+                                    <li>自动模式：系统自动查找符合条件的红色点进行连接</li>
+                                </ul>
+                            </li>
+                            <li><strong>计时器优化</strong>：
+                                <ul>
+                                    <li>移除了计时器的最大时间限制，现在可以设置任意长的时间</li>
+                                    <li>切换连接模式时不再重置计时器</li>
+                                </ul>
+                            </li>
+                        </ol>
+                        
+                        <h5>优化与修复：</h5>
+                        <ol>
+                            <li>将所有"根号5"表述替换为标准数学符号"√5"</li>
+                            <li>手动模式下起点使用紫色标记，更容易区分</li>
+                            <li>优化模式切换逻辑，保持连接点状态一致</li>
+                        </ol>
+                        
+                        <h4>之前的更新</h4>
+                        <h5>帮助文档功能：</h5>
+                        <ol>
+                            <li>添加了左侧抽屉式帮助文档，提供详细的使用说明</li>
+                            <li>包含基本功能介绍、点的操作、连线规则、计时器功能等内容</li>
+                            <li>添加了重要提示，说明传染路径会自动计算满足传染条件的点</li>
+                        </ol>
+                        
+                        <h5>欢迎弹窗功能：</h5>
+                        <ol>
+                            <li>首次访问时显示欢迎弹窗，提供简要的使用指南</li>
+                            <li>调整确认按钮文本为"确认"</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="main-container">
         <div class="controls">
@@ -329,9 +420,21 @@
             <button id="clearLines">清除所有连线</button>
             <button id="randomSelect">随机选择点</button>
             <button id="resetTimer">重置计时器</button>
+            <button id="updateLogBtn" style="background-color: #9b59b6; color: white;">更新记录</button>
             <!-- 用于测试弹窗的按钮 -->
             <!-- <button id="testModalBtn" style="background-color: #ff9800;">测试弹窗</button> -->
         </div>
+        
+        <!-- 添加连线模式选择开关 -->
+        <div class="mode-switch">
+            <label>
+                <input type="radio" name="connectionMode" value="auto" checked> 自动连接模式
+            </label>
+            <label>
+                <input type="radio" name="connectionMode" value="manual"> 手动选择模式
+            </label>
+        </div>
+        
         <div class="saved-layouts">
             <div class="save-section">
                 <input type="text" id="layoutName" placeholder="点位布局名称">
@@ -372,6 +475,12 @@
             
             // 初始化网格功能
             initializeGrid();
+            
+            // 添加更新记录按钮事件监听
+            document.getElementById('updateLogBtn').addEventListener('click', function() {
+                const updateLogModal = new bootstrap.Modal(document.getElementById('updateLogModal'));
+                updateLogModal.show();
+            });
         });
         
         // 初始化欢迎弹窗
@@ -471,10 +580,82 @@
                 );
                 
                 if (!lineExists) {
+                    // 获取点的位置
+                    const rect1 = dots[index1].getBoundingClientRect();
+                    const rect2 = dots[index2].getBoundingClientRect();
+                    const canvasRect = canvas.getBoundingClientRect();
+                    
+                    // 计算点相对于canvas的位置
+                    const x1 = rect1.left + rect1.width/2 - canvasRect.left;
+                    const y1 = rect1.top + rect1.height/2 - canvasRect.top;
+                    const x2 = rect2.left + rect2.width/2 - canvasRect.left;
+                    const y2 = rect2.top + rect2.height/2 - canvasRect.top;
+                    
                     lines.push({
                         index1: index1,
-                        index2: index2
+                        index2: index2,
+                        x1: x1,
+                        y1: y1,
+                        x2: x2,
+                        y2: y2,
+                        id: Date.now() + Math.random().toString(36).substr(2, 9) // 生成唯一ID用于标识连线
                     });
+                    
+                    // 立即绘制所有线条
+                    drawAllLines();
+                }
+            }
+            
+            // 移除指定连线
+            function removeLine(lineId) {
+                const lineIndex = lines.findIndex(line => line.id === lineId);
+                if (lineIndex !== -1) {
+                    // 保存被删除线的端点
+                    const removedLine = lines[lineIndex];
+                    // 删除线
+                    lines.splice(lineIndex, 1);
+                    // 重新绘制所有线
+                    drawAllLines();
+                    
+                    // 重新计算点的连接状态（除了起点，其他点如果没有连线了，就恢复绿色）
+                    updateDotsStatus();
+                    
+                    return removedLine;
+                }
+                return null;
+            }
+            
+            // 更新所有点的状态（将不再连接的点恢复为绿色，保持起点为红色）
+            function updateDotsStatus() {
+                // 先清除所有点的选中状态（恢复为蓝色/绿色）
+                dots.forEach(dot => {
+                    dot.classList.remove('selected');
+                    dot.classList.remove('manual-start'); // 清除手动模式起点标记
+                });
+                
+                // 如果有起点，根据模式设置颜色
+                if (firstSelectedDot) {
+                    const connectionMode = document.querySelector('input[name="connectionMode"]:checked').value;
+                    if (connectionMode === 'manual') {
+                        firstSelectedDot.classList.add('manual-start'); // 紫色
+                    } else {
+                        firstSelectedDot.classList.add('selected'); // 红色
+                    }
+                }
+                
+                // 将所有存在于连线中的点标记为红色
+                lines.forEach(line => {
+                    dots[line.index1].classList.add('selected');
+                    dots[line.index2].classList.add('selected');
+                });
+                
+                // 确保起点的颜色优先级更高
+                if (firstSelectedDot && firstSelectedIndex !== -1) {
+                    const connectionMode = document.querySelector('input[name="connectionMode"]:checked').value;
+                    if (connectionMode === 'manual') {
+                        dots[firstSelectedIndex].classList.add('manual-start'); // 紫色
+                        dots[firstSelectedIndex].classList.remove('selected'); // 移除红色
+                    }
                 }
             }
             
@@ -482,6 +663,17 @@
             function clearAllLines() {
                 lines.length = 0;
                 drawAllLines();
+                // 清除选择状态
+                clearSelectedDot();
+                // 移除所有点的选中状态
+                dots.forEach(dot => {
+                    dot.classList.remove('selected');
+                });
+                statusEl.textContent = "已清除所有连线";
+                
+                // 只重置计时器，不开始计时
+                stopTimer();
+                updateTimerDisplay();
             }
             
             // 绘制所有连线
@@ -489,11 +681,7 @@
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
-                // 设置线条样式
-                ctx.strokeStyle = '#3498db';
-                ctx.lineWidth = 1.5;
-                
-                // 绘制所有已保存的线
+                // 遍历所有线条
                 for (const line of lines) {
                     // 如果任一点隐藏，则不绘制
                     if (dots[line.index1].classList.contains('hidden') || 
@@ -501,28 +689,153 @@
                         continue;
                     }
                     
-                    // 将连线的点标记为选中状态（红色）
-                    dots[line.index1].classList.add('selected');
-                    dots[line.index2].classList.add('selected');
-                    
                     // 获取点的实际像素位置
                     const rect1 = dots[line.index1].getBoundingClientRect();
                     const rect2 = dots[line.index2].getBoundingClientRect();
-                    const gridRect = grid.getBoundingClientRect();
+                    const canvasRect = canvas.getBoundingClientRect();
                     
-                    // 计算在canvas中的相对坐标
-                    const x1 = rect1.left + rect1.width / 2 - gridRect.left;
-                    const y1 = rect1.top + rect1.height / 2 - gridRect.top;
-                    const x2 = rect2.left + rect2.width / 2 - gridRect.left;
-                    const y2 = rect2.top + rect2.height / 2 - gridRect.top;
+                    // 更新线条位置坐标，这对于鼠标悬停检测很重要
+                    line.x1 = rect1.left + rect1.width/2 - canvasRect.left;
+                    line.y1 = rect1.top + rect1.height/2 - canvasRect.top;
+                    line.x2 = rect2.left + rect2.width/2 - canvasRect.left;
+                    line.y2 = rect2.top + rect2.height/2 - canvasRect.top;
                     
                     // 绘制线条
                     ctx.beginPath();
-                    ctx.moveTo(x1, y1);
-                    ctx.lineTo(x2, y2);
+                    ctx.moveTo(line.x1, line.y1);
+                    ctx.lineTo(line.x2, line.y2);
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#2ecc71';
                     ctx.stroke();
                 }
             }
+            
+            // 检查点是否靠近线段
+            function isPointNearLine(px, py, x1, y1, x2, y2, tolerance) {
+                // 计算线段长度的平方
+                const lineLength2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+                if (lineLength2 === 0) return false; // 点不成线段
+                
+                // 计算点到线段的距离
+                const t = Math.max(0, Math.min(1, ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / lineLength2));
+                const projX = x1 + t * (x2 - x1);
+                const projY = y1 + t * (y2 - y1);
+                
+                const distance = Math.sqrt((px - projX) * (px - projX) + (py - projY) * (py - projY));
+                return distance <= tolerance;
+            }
+            
+            // 添加鼠标移动事件，实现连线高亮和点击删除功能
+            canvas.addEventListener('mousemove', function(e) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // 检查鼠标是否接近任何线条
+                let hoveredLine = null;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    
+                    // 跳过隐藏点的线条
+                    if (dots[line.index1].classList.contains('hidden') || 
+                        dots[line.index2].classList.contains('hidden')) {
+                        continue;
+                    }
+                    
+                    // 从点获取最新坐标
+                    const rect1 = dots[line.index1].getBoundingClientRect();
+                    const rect2 = dots[line.index2].getBoundingClientRect();
+                    
+                    // 计算在canvas中的相对坐标
+                    const x1 = rect1.left + rect1.width/2 - rect.left;
+                    const y1 = rect1.top + rect1.height/2 - rect.top;
+                    const x2 = rect2.left + rect2.width/2 - rect.left;
+                    const y2 = rect2.top + rect2.height/2 - rect.top;
+                    
+                    // 更新线条坐标
+                    line.x1 = x1;
+                    line.y1 = y1;
+                    line.x2 = x2;
+                    line.y2 = y2;
+                    
+                    // 计算鼠标到线段的距离
+                    const distance = distanceToLine(mouseX, mouseY, x1, y1, x2, y2);
+                    if (distance < 15) { // 增大检测范围
+                        hoveredLine = line;
+                        hoveredLine.index = i; // 保存索引，便于删除
+                        break;
+                    }
+                }
+                
+                // 如果鼠标靠近线条，显示高亮，并设置cursor
+                if (hoveredLine) {
+                    canvas.style.cursor = 'pointer';
+                    canvas.dataset.hoveredLineIndex = hoveredLine.index;
+                    
+                    // 重新绘制所有线条
+                    drawAllLines();
+                    
+                    // 高亮显示该线条
+                    const ctx = canvas.getContext('2d');
+                    ctx.beginPath();
+                    ctx.moveTo(hoveredLine.x1, hoveredLine.y1);
+                    ctx.lineTo(hoveredLine.x2, hoveredLine.y2);
+                    ctx.strokeStyle = '#e74c3c'; // 高亮颜色 - 红色
+                    ctx.lineWidth = 4;
+                    ctx.stroke();
+                    
+                    // 显示调试信息
+                    statusEl.textContent = `悬停在连线上 [${hoveredLine.index1} - ${hoveredLine.index2}] (点击可删除)`;
+                } else {
+                    canvas.style.cursor = 'default';
+                    canvas.dataset.hoveredLineIndex = '';
+                    drawAllLines();
+                }
+            });
+            
+            // 简化距离计算函数
+            function distanceToLine(px, py, x1, y1, x2, y2) {
+                // 线段长度的平方
+                const lineLength2 = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+                if (lineLength2 === 0) return Number.MAX_VALUE; // 防止除零错误
+                
+                // 计算投影长度比例
+                const t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / lineLength2;
+                
+                // 约束t在[0,1]范围内，确保投影点在线段上
+                const tClamped = Math.max(0, Math.min(1, t));
+                
+                // 计算投影点坐标
+                const projX = x1 + tClamped * (x2 - x1);
+                const projY = y1 + tClamped * (y2 - y1);
+                
+                // 计算点到投影点的距离
+                return Math.sqrt((px - projX) * (px - projX) + (py - projY) * (py - projY));
+            }
+            
+            // 添加点击事件，实现删除线条功能
+            canvas.addEventListener('click', function(e) {
+                const hoveredLineIndex = canvas.dataset.hoveredLineIndex;
+                if (hoveredLineIndex !== '' && hoveredLineIndex !== undefined) {
+                    // 删除该线条
+                    const index = parseInt(hoveredLineIndex);
+                    
+                    if (index >= 0 && index < lines.length) {
+                        console.log("删除连线:", lines[index]);
+                        statusEl.textContent = `已删除连线 [${lines[index].index1} - ${lines[index].index2}]`;
+                        
+                        // 直接使用数组的splice方法删除
+                        lines.splice(index, 1);
+                        
+                        // 重新绘制所有线段
+                        drawAllLines();
+                        
+                        // 更新点的状态
+                        updateDotsStatus();
+                    }
+                }
+            });
             
             // 检查两点间距离是否为√5
             function isDistanceSqrt5(pos1, pos2) {
@@ -535,6 +848,7 @@
             function clearSelectedDot() {
                 if (firstSelectedDot) {
                     firstSelectedDot.classList.remove('selected');
+                    firstSelectedDot.classList.remove('manual-start'); // 清除手动模式起点标记
                     firstSelectedDot = null;
                     firstSelectedIndex = -1;
                 }
@@ -542,6 +856,7 @@
                 // 清除所有被选中的点
                 dots.forEach(dot => {
                     dot.classList.remove('selected');
+                    dot.classList.remove('manual-start'); // 清除手动模式起点标记
                 });
                 
                 // 停止计时器
@@ -716,67 +1031,127 @@
                             return;
                         }
                         
+                        // 获取连线模式
+                        const connectionMode = document.querySelector('input[name="connectionMode"]:checked').value;
+                        
                         // 获取已连线或被选中的点
                         const connectedOrSelected = getConnectedOrSelectedDots();
                         
-                        // 移除手动选择第一个连接点的功能
-                        // 当前点已经是红色的情况处理
-                        if (dot.classList.contains('selected') || connectedOrSelected.includes(dotIndex)) {
-                            // 不允许手动选择第一个点，仅显示提示信息
-                            statusEl.textContent = "请使用'随机选择点'按钮来选择初始点";
-                            return;
-                        }
-                        
-                        // 如果当前点不是红色的，检查是否可以与任何红色点连线
-                        if (!dot.classList.contains('selected')) {
-                            // 获取所有红色点
-                            const selectedDots = [];
-                            dots.forEach((d, idx) => {
-                                if (d.classList.contains('selected') && !d.classList.contains('hidden')) {
-                                    selectedDots.push({ dot: d, index: idx });
+                        // 手动模式处理
+                        if (connectionMode === 'manual') {
+                            // 如果点击的是红色或紫色点（已选中点）
+                            if (dot.classList.contains('selected') || dot.classList.contains('manual-start') || connectedOrSelected.includes(dotIndex)) {
+                                // 设置为起点
+                                
+                                // 清除之前所有起点标记，但保留红色连接点
+                                if (firstSelectedDot) {
+                                    firstSelectedDot.classList.remove('manual-start');
+                                    // 如果之前的起点在连线中，则恢复为红色
+                                    const isInLine = lines.some(line => 
+                                        line.index1 === firstSelectedIndex || line.index2 === firstSelectedIndex
+                                    );
+                                    if (isInLine) {
+                                        firstSelectedDot.classList.add('selected');
+                                    }
                                 }
-                            });
-                            
-                            // 如果没有选中任何点（即没有点过"随机选择点"按钮），显示提示信息
-                            if (selectedDots.length === 0) {
-                                statusEl.textContent = "请先使用'随机选择点'按钮选择一个初始点";
-                                return;
-                            }
-                            
-                            // 检查当前点是否可以与任何红色点连线
-                            let canConnect = false;
-                            let closestSelectedDotIndex = -1;
-                            
-                            for (const selected of selectedDots) {
-                                const pos1 = dotPositions[selected.index];
-                                const pos2 = dotPositions[dotIndex];
                                 
-                                if (isDistanceSqrt5(pos1, pos2)) {
-                                    canConnect = true;
-                                    closestSelectedDotIndex = selected.index;
-                                    break;
-                                }
-                            }
-                            
-                            if (canConnect) {
-                                // 将当前点变成红色
-                                dot.classList.add('selected');
-                                
-                                // 添加连线
-                                addLine(closestSelectedDotIndex, dotIndex);
-                                drawAllLines();
-                                statusEl.textContent = "已连线！距离为√5";
-                                
-                                // 设置当前点为选中点，方便继续连线
+                                // 设置新的选中点
+                                dot.classList.remove('selected'); // 先移除红色
+                                dot.classList.add('manual-start'); // 添加紫色
                                 firstSelectedDot = dot;
                                 firstSelectedIndex = dotIndex;
                                 
-                                // 不再重置计时器
-                                // startTimer();
-                            } else {
-                                statusEl.textContent = "该点与任何红色点的距离都不是√5，不能连线";
+                                statusEl.textContent = "已选择起点，请选择第二个点完成连线";
+                                
+                                // 开始计时器
+                                startTimer();
+                                return;
                             }
-                            return;
+                            
+                            // 如果已有起点，且点击了非红色点
+                            if (firstSelectedDot && !dot.classList.contains('selected')) {
+                                // 检查是否可以连线（√5距离）
+                                const pos1 = dotPositions[firstSelectedIndex];
+                                const pos2 = dotPositions[dotIndex];
+                                
+                                if (isDistanceSqrt5(pos1, pos2)) {
+                                    // 将当前点变成红色
+                                    dot.classList.add('selected');
+                                    
+                                    // 添加连线
+                                    addLine(firstSelectedIndex, dotIndex);
+                                    drawAllLines();
+                                    statusEl.textContent = "已连线！距离为√5";
+                                    
+                                    // 保持当前选中点不变，继续连线
+                                } else {
+                                    statusEl.textContent = "该点与起点的距离不是√5，不能连线";
+                                }
+                                return;
+                            }
+                            
+                            // 如果没有起点且点击了非红色点
+                            if (!firstSelectedDot && !dot.classList.contains('selected')) {
+                                statusEl.textContent = "请先选择一个红色点作为起点";
+                                return;
+                            }
+                        } 
+                        // 自动模式处理
+                        else {
+                            // 如果点击的是红色点
+                            if (dot.classList.contains('selected') || connectedOrSelected.includes(dotIndex)) {
+                                statusEl.textContent = "在自动模式下，请使用'随机选择点'按钮来选择起点";
+                                return;
+                            }
+                            
+                            // 如果当前点不是红色的，检查是否可以与任何红色点连线
+                            if (!dot.classList.contains('selected')) {
+                                // 获取所有红色点
+                                const selectedDots = [];
+                                dots.forEach((d, idx) => {
+                                    if (d.classList.contains('selected') && !d.classList.contains('hidden')) {
+                                        selectedDots.push({ dot: d, index: idx });
+                                    }
+                                });
+                                
+                                // 如果没有选中任何点（即没有点过"随机选择点"按钮），显示提示信息
+                                if (selectedDots.length === 0) {
+                                    statusEl.textContent = "请先使用'随机选择点'按钮选择一个初始点";
+                                    return;
+                                }
+                                
+                                // 检查当前点是否可以与任何红色点连线
+                                let canConnect = false;
+                                let closestSelectedDotIndex = -1;
+                                
+                                for (const selected of selectedDots) {
+                                    const pos1 = dotPositions[selected.index];
+                                    const pos2 = dotPositions[dotIndex];
+                                    
+                                    if (isDistanceSqrt5(pos1, pos2)) {
+                                        canConnect = true;
+                                        closestSelectedDotIndex = selected.index;
+                                        break;
+                                    }
+                                }
+                                
+                                if (canConnect) {
+                                    // 将当前点变成红色
+                                    dot.classList.add('selected');
+                                    
+                                    // 添加连线
+                                    addLine(closestSelectedDotIndex, dotIndex);
+                                    drawAllLines();
+                                    statusEl.textContent = "已连线！距离为√5";
+                                    
+                                    // 设置当前点为选中点，方便继续连线
+                                    firstSelectedDot = dot;
+                                    firstSelectedIndex = dotIndex;
+                                } else {
+                                    statusEl.textContent = "该点与任何红色点的距离都不是√5，不能连线";
+                                }
+                                return;
+                            }
                         }
                     });
                     
@@ -1115,6 +1490,38 @@
                     alert("找不到选中的布局");
                 }
             }
+            
+            // 监听连线模式切换
+            document.querySelectorAll('input[name="connectionMode"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const mode = this.value;
+                    
+                    // 更新点的显示状态，但不改变连线状态
+                    if (mode === 'manual') {
+                        // 如果有起点，将其变为紫色
+                        if (firstSelectedDot) {
+                            firstSelectedDot.classList.remove('selected');
+                            firstSelectedDot.classList.add('manual-start');
+                        }
+                        statusEl.textContent = "已切换到手动选择模式，点击红色点设为起点";
+                    } else {
+                        // 如果有起点，将其变为红色
+                        if (firstSelectedDot) {
+                            firstSelectedDot.classList.remove('manual-start');
+                            firstSelectedDot.classList.add('selected');
+                        }
+                        statusEl.textContent = "已切换到自动连接模式，使用随机选择点按钮选择起点";
+                    }
+                    
+                    // 重新绘制所有线条
+                    drawAllLines();
+                    
+                    // 重新更新点的状态
+                    updateDotsStatus();
+                    
+                    // 不重置计时器，保留当前计时状态
+                });
+            });
         } // 闭合initializeGrid函数
     </script>
 </body>
