@@ -262,7 +262,7 @@
             
             <h4>3. 连线规则</h4>
             <ul>
-                <li><b>连线条件</b>：只有两点之间的距离为根号5时才能连线</li>
+                <li><b>连线条件</b>：只有两点之间的距离为√5时才能连线</li>
                 <li><b>连线方法</b>：先点击红色点，然后点击可以连线的点</li>
                 <li><b>距离计算</b>：如果两点坐标为(x1,y1)和(x2,y2)，则当(x1-x2)²+(y1-y2)²=5时可以连线</li>
                 <li><b>具体情况</b>：当两点横向距离为2、纵向距离为1，或横向距离为1、纵向距离为2时可以连线</li>
@@ -524,7 +524,7 @@
                 }
             }
             
-            // 检查两点间距离是否为根号5
+            // 检查两点间距离是否为√5
             function isDistanceSqrt5(pos1, pos2) {
                 const dx = Math.abs(pos1.x - pos2.x);
                 const dy = Math.abs(pos1.y - pos2.y);
@@ -765,7 +765,7 @@
                                 // 添加连线
                                 addLine(closestSelectedDotIndex, dotIndex);
                                 drawAllLines();
-                                statusEl.textContent = "已连线！距离为根号5";
+                                statusEl.textContent = "已连线！距离为√5";
                                 
                                 // 设置当前点为选中点，方便继续连线
                                 firstSelectedDot = dot;
@@ -774,7 +774,7 @@
                                 // 不再重置计时器
                                 // startTimer();
                             } else {
-                                statusEl.textContent = "该点与任何红色点的距离都不是根号5，不能连线";
+                                statusEl.textContent = "该点与任何红色点的距离都不是√5，不能连线";
                             }
                             return;
                         }
