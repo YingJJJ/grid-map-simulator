@@ -348,7 +348,7 @@
         <div class="grid-container" id="grid">
             <canvas id="linesCanvas"></canvas>
         </div>
-        <div class="status" id="status">点击“随机选择点”按钮开始连线</div>
+        <div class="status" id="status">点击“随机选择点”按钮开始游戏</div>
         <div class="stats" id="pointStats">可见点: 0/100</div>
         <div class="timer-container">
             <label for="timerInput">计时器(秒):</label>
@@ -395,10 +395,10 @@
             }
             
             // 添加测试按钮事件（开发期间使用，发布时可以移除）
-            document.getElementById('testModalBtn').addEventListener('click', function() {
-                const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeModal'));
-                welcomeModal.show();
-            });
+            // document.getElementById('testModalBtn').addEventListener('click', function() {
+            //     const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeModal'));
+            //     welcomeModal.show();
+            // });
         }
         
         // 初始化帮助抽屉
