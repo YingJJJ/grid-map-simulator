@@ -352,7 +352,7 @@
         <div class="stats" id="pointStats">可见点: 0/100</div>
         <div class="timer-container">
             <label for="timerInput">计时器(秒):</label>
-            <input type="number" id="timerInput" class="timer-input" min="1" max="60" value="30">
+            <input type="number" id="timerInput" class="timer-input" min="1" value="30">
             <div class="timer-display" id="timerDisplay">00:00</div>
         </div>
     </div>
@@ -937,8 +937,8 @@
                 // 重置计时器
                 const seconds = parseInt(timerInputEl.value);
                 if (isNaN(seconds) || seconds <= 0) {
-                    timerInputEl.value = 10; // 默认10秒
-                    timerSeconds = 10;
+                    timerInputEl.value = 1; // 默认1秒
+                    timerSeconds = 1;
                 } else {
                     timerSeconds = seconds;
                 }
@@ -955,9 +955,7 @@
                 let value = parseInt(timerInputEl.value);
                 if (isNaN(value) || value < 1) {
                     value = 1;
-                } else if (value > 60) {
-                    value = 60;
-                }
+                } 
                 timerInputEl.value = value;
                 
                 // 如果计时器正在运行，更新计时器
