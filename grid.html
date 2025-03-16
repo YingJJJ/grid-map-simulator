@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交互式网格地图</title>
+    <!-- 添加Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+        }
+        
+        .main-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            position: relative;
+            margin-top: 20px;
+        }
+        
+        /* 帮助文档抽屉样式 */
+        .help-drawer {
+            width: 0;
+            position: fixed;
+            z-index: 1000;
+            top: 0;
+            left: 0;
+            background-color: #f8f9fa;
+            overflow-x: hidden;
+            transition: 0.3s;
+            height: 100%;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            padding-top: 20px;
+        }
+        
+        .help-drawer.open {
+            width: 350px;
+        }
+        
+        .help-content {
+            padding: 20px;
+            margin: 10px;
+            overflow-y: auto;
+            height: calc(100% - 60px);
+        }
+        
+        .help-close-btn {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #333;
+        }
+        
+        .help-open-btn {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 999;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        
+        /* 原有的样式保持不变 */
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            padding: 0 20px;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+            font-family: Arial, sans-serif;
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        button {
+            padding: 8px 15px;
+            background-color: #3498db;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .grid-container {
+            position: relative;
+            display: grid;
+            grid-template-columns: repeat(10, 50px);
+            grid-template-rows: repeat(10, 50px);
+            gap: 2px;
+            background-color: #ccc;
+            padding: 2px;
+            border-radius: 4px;
+        }
+        
+        .grid-cell {
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .dot {
+            width: 10px;
+            height: 10px;
+            background-color: #3498db;
+            border-radius: 50%;
+            transition: all 0.3s;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .dot.hidden {
+            opacity: 0;
+        }
+        
+        .dot.selected {
+            background-color: #e74c3c;
+            box-shadow: 0 0 8px #e74c3c;
+            transform: scale(1.5);
+        }
+        
+        .grid-cell.empty {
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #linesCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #ecf0f1;
+            color: #2c3e50;
+        }
+        
+        .stats {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #34495e;
+            background-color: #f8f9fa;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .timer-container {
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .timer-input {
+            width: 60px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+        .timer-display {
+            font-size: 16px;
+            font-weight: bold;
+            color: #e74c3c;
+            min-width: 80px;
+            text-align: center;
+        }
+        
+        .saved-layouts {
+            margin: 15px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        
+        .save-section, .load-section {
+            margin: 5px 0;
+            display: flex;
+            align-items: center;
+        }
+        
+        #layoutName {
+            padding: 8px;
+            margin-right: 5px;
+            width: 200px;
+        }
+        
+        #savedLayouts {
+            padding: 8px;
+            margin-right: 5px;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 帮助文档抽屉 -->
+    <div id="helpDrawer" class="help-drawer">
+        <span id="closeHelpBtn" class="help-close-btn">&times;</span>
+        <div class="help-content">
+            <h2>网格地图使用指南</h2>
+            <hr>
+            
+            <h4>1. 基本功能介绍</h4>
+            <p>本工具提供了一个10×10的交互式网格地图，您可以在网格上显示/隐藏点，并按特定规则连接它们。</p>
+            <p><span style="color: red; font-weight: bold;">另：</span><br>1.点代表角色<br>2.线代表传染路径<br>3.红色点代表被传染debuff的角色，没有被传染的角色则为绿色<br>4.倒计时结束后未被传染的角色将被隐藏（死亡）。</p>
+            
+            <h4>2. 点（角色）的操作</h4>
+            <ul>
+                <li><b>显示/隐藏点</b>：点击网格中的格子可以显示或隐藏该位置的点</li>
+                <li><b>最大点数限制</b>：系统限制最多同时显示25个点</li>
+                <li><b>随机选择点</b>：点击"随机选择点"按钮可以随机在网格中显示25个点</li>
+            </ul>
+            
+            <h4>3. 连线规则</h4>
+            <ul>
+                <li><b>连线条件</b>：只有两点之间的距离为根号5时才能连线</li>
+                <li><b>连线方法</b>：先点击红色点，然后点击可以连线的点</li>
+                <li><b>距离计算</b>：如果两点坐标为(x1,y1)和(x2,y2)，则当(x1-x2)²+(y1-y2)²=5时可以连线</li>
+                <li><b>具体情况</b>：当两点横向距离为2、纵向距离为1，或横向距离为1、纵向距离为2时可以连线</li>
+            </ul>
+            
+            <h4>4. 计时器功能</h4>
+            <ul>
+                <li><b>设置时间</b>：在计时器输入框中设置倒计时秒数</li>
+                <li><b>开始计时</b>：当选择红色点后计时器自动开始</li>
+                <li><b>重置计时</b>：使用"重置计时器"按钮重置计时</li>
+                <li><b>时间到</b>：计时结束后会自动隐藏所有未连接的点</li>
+            </ul>
+            
+            <h4>5. 布局管理</h4>
+            <ul>
+                <li><b>保存布局</b>：将当前可见点的布局保存到本地存储</li>
+                <li><b>加载布局</b>：从本地存储加载之前保存的点布局</li>
+                <li><b>删除布局</b>：从本地存储中删除选定的布局</li>
+            </ul>
+            
+            <h4>6. 提示与技巧</h4>
+            <ul>
+                <li>红色点表示已选择或已连线的点</li>
+                <li>连线后的点会保持红色，便于继续连接新的点</li>
+                <li>可以使用计时器来增加挑战难度</li>
+                <li>对于常用的布局，建议保存以便下次快速加载</li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- 打开帮助按钮 -->
+    <button id="openHelpBtn" class="help-open-btn">帮助文档</button>
+
+    <!-- 添加欢迎弹窗 -->
+    <div class="modal fade" id="welcomeModal" tabindex="-1" aria-labelledby="welcomeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="welcomeModalLabel">欢迎使用交互式网格地图</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>1. 点代表角色</p>
+                    <p>2. 线代表传染路径</p>
+                    <p>3. 红色点代表被传染debuff的角色，没有被传染的角色则为绿色</p>
+                    <p>4. 倒计时结束后未被传染的角色将被隐藏（死亡）</p>
+                    <p>5. 请使用“随机选择点”点名一名角色，开始游戏</p>
+                    <p>6. <span style="color: red; font-weight: bold;">重要提示：</span>传染路径会自动计算满足传染条件的点，无需手动判断是否满足传染条件！这是为了节省操作时间</p>
+                    <p><strong>更多功能请点击左上角帮助文档查看</strong></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确认</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="controls">
+            <button id="showAll">显示所有点</button>
+            <button id="hideAll">隐藏所有点</button>
+            <button id="toggleAll">切换所有点</button>
+            <button id="randomDots">随机显示点</button>
+            <button id="clearLines">清除所有连线</button>
+            <button id="randomSelect">随机选择点</button>
+            <button id="resetTimer">重置计时器</button>
+            <!-- 用于测试弹窗的按钮 -->
+            <button id="testModalBtn" style="background-color: #ff9800;">测试弹窗</button>
+        </div>
+        <div class="saved-layouts">
+            <div class="save-section">
+                <input type="text" id="layoutName" placeholder="点位布局名称">
+                <button id="saveLayout">保存当前点位</button>
+            </div>
+            <div class="load-section">
+                <select id="savedLayouts">
+                    <option value="">-- 选择已保存的点位 --</option>
+                </select>
+                <button id="loadLayout">加载点位</button>
+                <button id="deleteLayout">删除点位</button>
+            </div>
+        </div>
+        <div class="grid-container" id="grid">
+            <canvas id="linesCanvas"></canvas>
+        </div>
+        <div class="status" id="status">点击任意点开始连线</div>
+        <div class="stats" id="pointStats">可见点: 0/100</div>
+        <div class="timer-container">
+            <label for="timerInput">计时器(秒):</label>
+            <input type="number" id="timerInput" class="timer-input" min="1" max="60" value="30">
+            <div class="timer-display" id="timerDisplay">00:00</div>
+        </div>
+    </div>
+
+    <!-- 添加Bootstrap JS和Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // DOMContentLoaded事件处理
+        document.addEventListener('DOMContentLoaded', function() {
+            // 所有DOM元素加载完成后执行初始化
+            
+            // 初始化帮助抽屉
+            initHelpDrawer();
+            
+            // 初始化欢迎弹窗
+            initWelcomeModal();
+            
+            // 初始化网格功能
+            initializeGrid();
+        });
+        
+        // 初始化欢迎弹窗
+        function initWelcomeModal() {
+            // 检查是否是首次访问
+            const hasVisited = localStorage.getItem('hasVisitedGridApp');
+            
+            // 清除标记以便测试（开发期间可以使用，发布时请注释掉）
+            // localStorage.removeItem('hasVisitedGridApp');
+            
+            if (!hasVisited) {
+                // 确保Bootstrap已加载完成
+                setTimeout(function() {
+                    const welcomeModalEl = document.getElementById('welcomeModal');
+                    const welcomeModal = new bootstrap.Modal(welcomeModalEl);
+                    welcomeModal.show();
+                    
+                    // 设置访问标记，下次不再显示
+                    localStorage.setItem('hasVisitedGridApp', 'true');
+                }, 500);
+            }
+            
+            // 添加测试按钮事件（开发期间使用，发布时可以移除）
+            document.getElementById('testModalBtn').addEventListener('click', function() {
+                const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeModal'));
+                welcomeModal.show();
+            });
+        }
+        
+        // 初始化帮助抽屉
+        function initHelpDrawer() {
+            const helpDrawer = document.getElementById('helpDrawer');
+            const openHelpBtn = document.getElementById('openHelpBtn');
+            const closeHelpBtn = document.getElementById('closeHelpBtn');
+            
+            // 打开帮助抽屉
+            openHelpBtn.addEventListener('click', function() {
+                helpDrawer.classList.add('open');
+            });
+            
+            // 关闭帮助抽屉
+            closeHelpBtn.addEventListener('click', function() {
+                helpDrawer.classList.remove('open');
+            });
+            
+            // 点击抽屉外部也可关闭抽屉
+            document.addEventListener('click', function(event) {
+                if (!helpDrawer.contains(event.target) && event.target !== openHelpBtn && helpDrawer.classList.contains('open')) {
+                    helpDrawer.classList.remove('open');
+                }
+            });
+        }
+        
+        // 初始化网格功能 - 原有的主要功能代码
+        function initializeGrid() {
+            const grid = document.getElementById('grid');
+            const canvas = document.getElementById('linesCanvas');
+            const statusEl = document.getElementById('status');
+            const pointStatsEl = document.getElementById('pointStats');
+            const timerInputEl = document.getElementById('timerInput');
+            const timerDisplayEl = document.getElementById('timerDisplay');
+            const dots = [];
+            const dotPositions = [];
+            const cellSize = 52; // 50px 格子大小 + 2px 间隔
+            const maxVisibleDots = 25; // 最多显示25个点
+            
+            // 保存连线信息
+            const lines = [];
+            
+            // 选择点的状态
+            let firstSelectedDot = null;
+            let firstSelectedIndex = -1;
+            
+            // 计时器变量
+            let timerInterval = null;
+            let timerSeconds = 0;
+            let timerRunning = false;
+            
+            // 设置画布尺寸
+            function resizeCanvas() {
+                const gridRect = grid.getBoundingClientRect();
+                canvas.width = gridRect.width;
+                canvas.height = gridRect.height;
+            }
+            
+            window.addEventListener('resize', function() {
+                resizeCanvas();
+                drawAllLines();
+            });
+            
+            // 添加新连线
+            function addLine(index1, index2) {
+                // 检查是否已经存在这条线
+                const lineExists = lines.some(line => 
+                    (line.index1 === index1 && line.index2 === index2) || 
+                    (line.index1 === index2 && line.index2 === index1)
+                );
+                
+                if (!lineExists) {
+                    lines.push({
+                        index1: index1,
+                        index2: index2
+                    });
+                }
+            }
+            
+            // 清除所有连线
+            function clearAllLines() {
+                lines.length = 0;
+                drawAllLines();
+            }
+            
+            // 绘制所有连线
+            function drawAllLines() {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // 设置线条样式
+                ctx.strokeStyle = '#3498db';
+                ctx.lineWidth = 1.5;
+                
+                // 绘制所有已保存的线
+                for (const line of lines) {
+                    // 如果任一点隐藏，则不绘制
+                    if (dots[line.index1].classList.contains('hidden') || 
+                        dots[line.index2].classList.contains('hidden')) {
+                        continue;
+                    }
+                    
+                    // 将连线的点标记为选中状态（红色）
+                    dots[line.index1].classList.add('selected');
+                    dots[line.index2].classList.add('selected');
+                    
+                    // 获取点的实际像素位置
+                    const rect1 = dots[line.index1].getBoundingClientRect();
+                    const rect2 = dots[line.index2].getBoundingClientRect();
+                    const gridRect = grid.getBoundingClientRect();
+                    
+                    // 计算在canvas中的相对坐标
+                    const x1 = rect1.left + rect1.width / 2 - gridRect.left;
+                    const y1 = rect1.top + rect1.height / 2 - gridRect.top;
+                    const x2 = rect2.left + rect2.width / 2 - gridRect.left;
+                    const y2 = rect2.top + rect2.height / 2 - gridRect.top;
+                    
+                    // 绘制线条
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                }
+            }
+            
+            // 检查两点间距离是否为根号5
+            function isDistanceSqrt5(pos1, pos2) {
+                const dx = Math.abs(pos1.x - pos2.x);
+                const dy = Math.abs(pos1.y - pos2.y);
+                return (dx === 1 && dy === 2) || (dx === 2 && dy === 1);
+            }
+            
+            // 清除已选择的点
+            function clearSelectedDot() {
+                if (firstSelectedDot) {
+                    firstSelectedDot.classList.remove('selected');
+                    firstSelectedDot = null;
+                    firstSelectedIndex = -1;
+                }
+                
+                // 清除所有被选中的点
+                dots.forEach(dot => {
+                    dot.classList.remove('selected');
+                });
+                
+                // 停止计时器
+                stopTimer();
+            }
+            
+            // 随机选择一个可见的点
+            function randomSelectDot() {
+                // 先清除之前选择的点
+                clearSelectedDot();
+                
+                // 获取所有可见的点
+                const visibleDots = dots.filter((dot, index) => !dot.classList.contains('hidden'));
+                
+                // 如果没有可见的点，提示用户
+                if (visibleDots.length === 0) {
+                    statusEl.textContent = "没有可见的点可供选择";
+                    return;
+                }
+                
+                // 随机选择一个可见的点
+                const randomIndex = Math.floor(Math.random() * visibleDots.length);
+                const selectedDot = visibleDots[randomIndex];
+                const dotIndex = dots.indexOf(selectedDot);
+                
+                // 设置选中状态
+                selectedDot.classList.add('selected');
+                firstSelectedDot = selectedDot;
+                firstSelectedIndex = dotIndex;
+                
+                statusEl.textContent = "已随机选择一个点，请选择第二个点完成连线";
+                
+                // 开始计时器
+                startTimer();
+            }
+            
+            // 获取所有已连线或被选中的点
+            function getConnectedOrSelectedDots() {
+                const connectedIndices = new Set();
+                
+                // 添加所有已连线的点
+                lines.forEach(line => {
+                    connectedIndices.add(line.index1);
+                    connectedIndices.add(line.index2);
+                });
+                
+                // 添加当前选中的点
+                if (firstSelectedIndex !== -1) {
+                    connectedIndices.add(firstSelectedIndex);
+                }
+                
+                return Array.from(connectedIndices);
+            }
+            
+            // 开始计时器
+            function startTimer() {
+                // 如果计时器已经在运行，不重新开始
+                if (timerRunning) {
+                    return;
+                }
+                
+                // 停止之前的计时器
+                stopTimer();
+                
+                // 获取用户设置的时间
+                const seconds = parseInt(timerInputEl.value);
+                if (isNaN(seconds) || seconds <= 0) {
+                    timerInputEl.value = 10; // 默认10秒
+                    timerSeconds = 10;
+                } else {
+                    timerSeconds = seconds;
+                }
+                
+                // 更新显示
+                updateTimerDisplay();
+                
+                // 开始新的计时器
+                timerRunning = true;
+                timerInterval = setInterval(function() {
+                    timerSeconds--;
+                    updateTimerDisplay();
+                    
+                    if (timerSeconds <= 0) {
+                        // 计时结束
+                        stopTimer();
+                        
+                        // 获取已连线或被选中的点
+                        const connectedOrSelectedIndices = getConnectedOrSelectedDots();
+                        
+                        // 隐藏除了红色点以外的所有点
+                        dots.forEach((dot, index) => {
+                            if (!connectedOrSelectedIndices.includes(index) && !dot.classList.contains('selected')) {
+                                dot.classList.add('hidden');
+                            }
+                            
+                            // 确保所有连线的点都是红色的
+                            if (connectedOrSelectedIndices.includes(index)) {
+                                dot.classList.add('selected');
+                            }
+                        });
+                        
+                        drawAllLines();
+                        updatePointStats();
+                        statusEl.textContent = "时间到！已隐藏所有非连线点";
+                    }
+                }, 1000);
+            }
+            
+            // 停止计时器
+            function stopTimer() {
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                }
+                timerRunning = false;
+            }
+            
+            // 更新计时器显示
+            function updateTimerDisplay() {
+                const minutes = Math.floor(timerSeconds / 60);
+                const seconds = timerSeconds % 60;
+                timerDisplayEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            // 随机选择网格中的位置放置点
+            function getRandomPositions(total, max) {
+                const positions = [];
+                while (positions.length < total) {
+                    const x = Math.floor(Math.random() * 10);
+                    const y = Math.floor(Math.random() * 10);
+                    const position = y * 10 + x;
+                    
+                    // 确保不重复
+                    if (!positions.includes(position)) {
+                        positions.push(position);
+                    }
+                }
+                return positions;
+            }
+            
+            // 获取25个随机位置
+            const dotPositionsIndices = getRandomPositions(maxVisibleDots, 100);
+            
+            // 创建10×10的网格，但只在选定的25个位置放点
+            for (let i = 0; i < 10; i++) {
+                for (let j = 0; j < 10; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    const position = i * 10 + j;
+                    
+                    // 创建所有格子的点，但根据位置决定是否隐藏
+                    const dot = document.createElement('div');
+                    dot.className = 'dot';
+                    
+                    // 如果不在选定的位置，默认隐藏
+                    if (!dotPositionsIndices.includes(position)) {
+                        dot.classList.add('hidden');
+                    }
+                    
+                    const dotIndex = dots.length;
+                    dots.push(dot);
+                    
+                    // 保存点的位置信息（网格坐标）
+                    dotPositions.push({x: j, y: i});
+                    
+                    // 添加点击事件，处理点的选择和连线
+                    dot.addEventListener('click', function(e) {
+                        e.stopPropagation(); // 阻止冒泡到cell
+                        
+                        // 如果点是隐藏的，不做任何操作
+                        if (dot.classList.contains('hidden')) {
+                            return;
+                        }
+                        
+                        // 获取已连线或被选中的点
+                        const connectedOrSelected = getConnectedOrSelectedDots();
+                        
+                        // 移除手动选择第一个连接点的功能
+                        // 当前点已经是红色的情况处理
+                        if (dot.classList.contains('selected') || connectedOrSelected.includes(dotIndex)) {
+                            // 不允许手动选择第一个点，仅显示提示信息
+                            statusEl.textContent = "请使用'随机选择点'按钮来选择初始点";
+                            return;
+                        }
+                        
+                        // 如果当前点不是红色的，检查是否可以与任何红色点连线
+                        if (!dot.classList.contains('selected')) {
+                            // 获取所有红色点
+                            const selectedDots = [];
+                            dots.forEach((d, idx) => {
+                                if (d.classList.contains('selected') && !d.classList.contains('hidden')) {
+                                    selectedDots.push({ dot: d, index: idx });
+                                }
+                            });
+                            
+                            // 如果没有选中任何点（即没有点过"随机选择点"按钮），显示提示信息
+                            if (selectedDots.length === 0) {
+                                statusEl.textContent = "请先使用'随机选择点'按钮选择一个初始点";
+                                return;
+                            }
+                            
+                            // 检查当前点是否可以与任何红色点连线
+                            let canConnect = false;
+                            let closestSelectedDotIndex = -1;
+                            
+                            for (const selected of selectedDots) {
+                                const pos1 = dotPositions[selected.index];
+                                const pos2 = dotPositions[dotIndex];
+                                
+                                if (isDistanceSqrt5(pos1, pos2)) {
+                                    canConnect = true;
+                                    closestSelectedDotIndex = selected.index;
+                                    break;
+                                }
+                            }
+                            
+                            if (canConnect) {
+                                // 将当前点变成红色
+                                dot.classList.add('selected');
+                                
+                                // 添加连线
+                                addLine(closestSelectedDotIndex, dotIndex);
+                                drawAllLines();
+                                statusEl.textContent = "已连线！距离为根号5";
+                                
+                                // 设置当前点为选中点，方便继续连线
+                                firstSelectedDot = dot;
+                                firstSelectedIndex = dotIndex;
+                                
+                                // 不再重置计时器
+                                // startTimer();
+                            } else {
+                                statusEl.textContent = "该点与任何红色点的距离都不是根号5，不能连线";
+                            }
+                            return;
+                        }
+                    });
+                    
+                    // 添加格子点击事件，切换点的显示/隐藏状态
+                    cell.addEventListener('click', function() {
+                        // 只有当不在选择点模式时才切换显示/隐藏
+                        if (firstSelectedDot === null) {
+                            // 如果点是隐藏的，检查是否可以显示（不超过25个点）
+                            if (dot.classList.contains('hidden')) {
+                                // 检查当前可见的点数
+                                const visibleCount = updatePointStats();
+                                if (visibleCount >= maxVisibleDots) {
+                                    statusEl.textContent = `已达到最大点数限制(${maxVisibleDots}个)，请先隐藏一些点`;
+                                    return;
+                                }
+                            }
+                            
+                            dot.classList.toggle('hidden');
+                            drawAllLines();
+                            updatePointStats();
+                        }
+                    });
+                    
+                    cell.appendChild(dot);
+                    grid.appendChild(cell);
+                }
+            }
+            
+            // 统计当前可见的点数
+            function updatePointStats() {
+                const visibleCount = dots.filter(dot => !dot.classList.contains('hidden')).length;
+                pointStatsEl.textContent = `可见点: ${visibleCount}/${dots.length}`;
+                return visibleCount;
+            }
+            
+            // 初始化画布
+            setTimeout(resizeCanvas, 0);
+            // 初始化点数统计
+            setTimeout(updatePointStats, 0);
+            // 初始化计时器显示
+            updateTimerDisplay();
+            
+            // 控制按钮功能
+            
+            // 显示所有点
+            document.getElementById('showAll').addEventListener('click', function() {
+                dots.forEach(dot => {
+                    dot.classList.remove('hidden');
+                });
+                // 清除所有连线
+                clearAllLines();
+                // 清除选择状态
+                clearSelectedDot();
+                updatePointStats();
+                statusEl.textContent = "已显示所有点";
+                
+                // 只重置计时器，不开始计时
+                stopTimer();
+                updateTimerDisplay();
+            });
+            
+            // 隐藏所有点
+            document.getElementById('hideAll').addEventListener('click', function() {
+                dots.forEach(dot => {
+                    dot.classList.add('hidden');
+                });
+                // 清除所有连线
+                clearAllLines();
+                // 清除选择状态
+                clearSelectedDot();
+                updatePointStats();
+                statusEl.textContent = "已隐藏所有点";
+                
+                // 只重置计时器，不开始计时
+                stopTimer();
+                updateTimerDisplay();
+            });
+            
+            // 切换所有点的状态
+            document.getElementById('toggleAll').addEventListener('click', function() {
+                dots.forEach(dot => {
+                    dot.classList.toggle('hidden');
+                });
+                // 清除所有连线
+                clearAllLines();
+                // 清除选择状态
+                clearSelectedDot();
+                updatePointStats();
+                statusEl.textContent = "已切换所有点";
+                
+                // 只重置计时器，不开始计时
+                stopTimer();
+                updateTimerDisplay();
+            });
+            
+            // 随机显示/隐藏点
+            document.getElementById('randomDots').addEventListener('click', function() {
+                // 清除已选择的点
+                clearSelectedDot();
+                
+                // 先隐藏所有点
+                dots.forEach(dot => {
+                    dot.classList.add('hidden');
+                });
+                
+                // 获取25个随机索引
+                const indices = [];
+                while (indices.length < maxVisibleDots) {
+                    const idx = Math.floor(Math.random() * dots.length);
+                    if (!indices.includes(idx)) {
+                        indices.push(idx);
+                    }
+                }
+                
+                // 显示随机选中的点
+                indices.forEach(idx => {
+                    dots[idx].classList.remove('hidden');
+                });
+                
+                // 清除所有连线
+                clearAllLines();
+                
+                drawAllLines();
+                updatePointStats();
+                statusEl.textContent = `已随机显示${maxVisibleDots}个点`;
+                
+                // 只重置计时器，不开始计时
+                stopTimer();
+                updateTimerDisplay();
+            });
+            
+            // 清除所有连线
+            document.getElementById('clearLines').addEventListener('click', function() {
+                clearAllLines();
+                // 清除选择状态
+                clearSelectedDot();
+                // 移除所有点的选中状态
+                dots.forEach(dot => {
+                    dot.classList.remove('selected');
+                });
+                statusEl.textContent = "已清除所有连线";
+                
+                // 只重置计时器，不开始计时
+                stopTimer();
+                updateTimerDisplay();
+            });
+            
+            // 随机选择一个点
+            document.getElementById('randomSelect').addEventListener('click', function() {
+                randomSelectDot();
+                updatePointStats();
+                
+                // randomSelectDot函数中已经包含开始计时的逻辑
+            });
+            
+            // 重置计时器
+            document.getElementById('resetTimer').addEventListener('click', function() {
+                // 重置计时器
+                const seconds = parseInt(timerInputEl.value);
+                if (isNaN(seconds) || seconds <= 0) {
+                    timerInputEl.value = 10; // 默认10秒
+                    timerSeconds = 10;
+                } else {
+                    timerSeconds = seconds;
+                }
+                
+                // 只停止计时器，不开始新的计时
+                stopTimer();
+                updateTimerDisplay();
+                
+                statusEl.textContent = "已重置计时器";
+            });
+            
+            // 监听计时器输入变化
+            timerInputEl.addEventListener('change', function() {
+                let value = parseInt(timerInputEl.value);
+                if (isNaN(value) || value < 1) {
+                    value = 1;
+                } else if (value > 60) {
+                    value = 60;
+                }
+                timerInputEl.value = value;
+                
+                // 如果计时器正在运行，更新计时器
+                if (timerRunning) {
+                    timerSeconds = value;
+                    updateTimerDisplay();
+                }
+            });
+            
+            // 初始化点布局管理系统
+            initLayoutManager();
+            
+            // 初始化布局管理器
+            function initLayoutManager() {
+                // 加载已保存的布局到下拉菜单
+                loadSavedLayouts();
+                
+                // 绑定保存布局按钮
+                document.getElementById('saveLayout').addEventListener('click', function() {
+                    saveCurrentLayout();
+                });
+                
+                // 绑定加载布局按钮
+                document.getElementById('loadLayout').addEventListener('click', function() {
+                    loadSelectedLayout();
+                });
+                
+                // 绑定删除布局按钮
+                document.getElementById('deleteLayout').addEventListener('click', function() {
+                    deleteSelectedLayout();
+                });
+            }
+            
+            // 保存当前点位布局
+            function saveCurrentLayout() {
+                const layoutName = document.getElementById('layoutName').value.trim();
+                if (!layoutName) {
+                    alert("请输入布局名称");
+                    return;
+                }
+                
+                // 获取当前显示的点位
+                const visibleDots = [];
+                dots.forEach((dot, index) => {
+                    if (!dot.classList.contains('hidden')) {
+                        visibleDots.push(index);
+                    }
+                });
+                
+                // 获取已有的布局
+                let layouts = JSON.parse(localStorage.getItem('gridLayouts') || '{}');
+                
+                // 保存新布局
+                layouts[layoutName] = {
+                    name: layoutName,
+                    dots: visibleDots,
+                    timestamp: new Date().toISOString()
+                };
+                
+                // 保存回localStorage
+                localStorage.setItem('gridLayouts', JSON.stringify(layouts));
+                
+                // 更新下拉菜单
+                loadSavedLayouts();
+                
+                // 选中刚保存的布局
+                const select = document.getElementById('savedLayouts');
+                select.value = layoutName;
+                
+                statusEl.textContent = `已保存点位布局: ${layoutName}`;
+            }
+            
+            // 加载已保存的布局到下拉菜单
+            function loadSavedLayouts() {
+                const select = document.getElementById('savedLayouts');
+                const layouts = JSON.parse(localStorage.getItem('gridLayouts') || '{}');
+                
+                // 清除现有选项（保留默认选项）
+                while (select.options.length > 1) {
+                    select.remove(1);
+                }
+                
+                // 添加保存的布局选项
+                for (const name in layouts) {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    select.appendChild(option);
+                }
+            }
+            
+            // 加载选中的布局
+            function loadSelectedLayout() {
+                const select = document.getElementById('savedLayouts');
+                const layoutName = select.value;
+                
+                if (!layoutName) {
+                    alert("请选择一个已保存的布局");
+                    return;
+                }
+                
+                const layouts = JSON.parse(localStorage.getItem('gridLayouts') || '{}');
+                const layout = layouts[layoutName];
+                
+                if (!layout) {
+                    alert("找不到选中的布局");
+                    return;
+                }
+                
+                // 先隐藏所有点
+                dots.forEach(dot => dot.classList.add('hidden'));
+                
+                // 显示布局中的点
+                layout.dots.forEach(index => {
+                    if (index >= 0 && index < dots.length) {
+                        dots[index].classList.remove('hidden');
+                    }
+                });
+                
+                // 清除所有连线
+                clearAllLines();
+                
+                // 更新UI
+                drawAllLines();
+                updatePointStats();
+                statusEl.textContent = `已加载点位布局: ${layoutName}`;
+                
+                // 停止计时器
+                stopTimer();
+                updateTimerDisplay();
+            }
+            
+            // 删除选中的布局
+            function deleteSelectedLayout() {
+                const select = document.getElementById('savedLayouts');
+                const layoutName = select.value;
+                
+                if (!layoutName) {
+                    alert("请选择一个已保存的布局");
+                    return;
+                }
+                
+                // 获取已有的布局
+                let layouts = JSON.parse(localStorage.getItem('gridLayouts') || '{}');
+                
+                // 删除选中的布局
+                if (layouts[layoutName]) {
+                    delete layouts[layoutName];
+                    localStorage.setItem('gridLayouts', JSON.stringify(layouts));
+                    
+                    // 更新下拉菜单
+                    loadSavedLayouts();
+                    select.value = "";
+                    
+                    statusEl.textContent = `已删除点位布局: ${layoutName}`;
+                } else {
+                    alert("找不到选中的布局");
+                }
+            }
+        } // 闭合initializeGrid函数
+    </script>
+</body>
+</html>
